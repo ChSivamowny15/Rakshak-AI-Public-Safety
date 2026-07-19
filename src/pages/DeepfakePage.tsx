@@ -1,0 +1,165 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  AudioLines,
+  Upload,
+  Play,
+  Loader2,
+  User,
+  Bot,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
+import { GlassCard, SectionHeading } from '../components/GlassCard';
+import { PageHeader } from '../components/PageTransition';
+import { ConfidenceMeter } from '../components/RiskGauge';
+import { WaveformVisualizer } from '../components/WaveformVisualizer';
+import { deepfakeAnalysis } from '../data/mock';
+
+export function DeepfakePage() {
+  const [analyzing, setAnalyzing] = useState(false);
+  const [result, setResult] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
+
+  const run = () => {
+    setAnalyzing(true);
+    setResult(false);
+    setTimeout(() => {
+      setAnalyzing(false);
+      setResult(true);
+    }, 2000);
+  };
+
+  const ai = deepfakeAnalysis.prediction === 'AI-Synthesized';
+
+  return (
+    <div>
+      <PageHeader
+        title="Voice Deepfake Detection"
+        subtitle="Upload an audio sample to determine whether the voice is genuine human speech or AI-synthesized. Rakshak AI performs spectral, prosodic and phase-continuity forensics."
+        icon={<AudioLines className="h-6 w-6 text-cyan-300" />}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Upload + waveform */}
+        <GlassCard className="p-6">
+          <SectionHeading label="Input" title="Audio Sample" />
+          {!uploaded ? (
+            <label className="group flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.02] px-6 py-14 text-center transition-all hover:border-cyan-400/40 hover:bg-cyan-500/5">
+              <Upload className="mb-3 h-8 w-8 text-slate-400 group-hover:text-cyan-300" />
+              <p className="text-sm font-medium text-slate-200">Upload audio file</p>
+              <p className="mt-1 text-xs text-slate-500">MP3, WAV, FLAC — up to 50MB</p>
+              <input
+                type="file"
+                accept="audio/*"
+                className="hidden"
+                onChange={() => setUploaded(true)}
+              />
+            </label>
+          ) : (
+            <div>
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <button className="grid h-10 w-10 place-items-center rounded-lg bg-cyan-500/15">
+                  <Play className="h-4 w-4 text-cyan-300" />
+                </button>
+                <div className="flex-1">
+                  <p className="text-sm text-slate-200">voice_sample.wav</p>
+                  <p className="text-xs text-slate-500">0:12 • 1.8MB • 44.1kHz</p>
+                </div>
+              </div>
+              <div className="mt-5 rounded-xl border border-white/10 bg-ink-950/40 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Live Waveform</p>
+                <WaveformVisualizer animate={analyzing || !result} />
+              </div>
+              <button onClick={run} disabled={analyzing} className="btn-primary mt-5 w-full">
+                {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <AudioLines className="h-4 w-4" />}
+                {analyzing ? 'Analyzing waveform…' : 'Run Deepfake Analysis'}
+              </button>
+            </div>
+          )}
+        </GlassCard>
+
+        {/* Prediction */}
+        <GlassCard className="p-6">
+          <SectionHeading label="Result" title="Human vs AI Prediction" />
+          {!result && !analyzing && (
+            <div className="grid h-64 place-items-center text-center">
+              <AudioLines className="mx-auto mb-3 h-10 w-10 text-slate-600" />
+              <p className="text-sm text-slate-500">Upload audio and run analysis to see prediction.</p>
+            </div>
+          )}
+          {analyzing && (
+            <div className="grid h-64 place-items-center">
+              <Loader2 className="mx-auto mb-3 h-10 w-10 animate-spin text-cyan-300" />
+              <p className="text-sm text-slate-400">Extracting voice features…</p>
+            </div>
+          )}
+          {result && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+              <div className={`rounded-2xl border p-5 text-center ${ai ? 'border-rose-400/30 bg-rose-500/10' : 'border-emerald-400/30 bg-emerald-500/10'}`}>
+                <div className={`mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full ${ai ? 'bg-rose-500/20' : 'bg-emerald-500/20'}`}>
+                  {ai ? <Bot className="h-7 w-7 text-rose-300" /> : <User className="h-7 w-7 text-emerald-300" />}
+                </div>
+                <p className={`font-display text-xl font-bold ${ai ? 'text-rose-300' : 'text-emerald-300'}`}>
+                  {deepfakeAnalysis.prediction}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">{ai ? 'Voice likely generated by AI model' : 'Voice appears genuine'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="flex items-center gap-2 text-xs text-slate-400"><User className="h-3.5 w-3.5" /> Human</div>
+                  <p className="mt-1 font-display text-2xl font-bold text-slate-200">{deepfakeAnalysis.humanProb}%</p>
+                </div>
+                <div className="rounded-xl border border-rose-400/20 bg-rose-500/10 p-4">
+                  <div className="flex items-center gap-2 text-xs text-rose-300"><Bot className="h-3.5 w-3.5" /> AI</div>
+                  <p className="mt-1 font-display text-2xl font-bold text-rose-300">{deepfakeAnalysis.aiProb}%</p>
+                </div>
+              </div>
+
+              <ConfidenceMeter value={deepfakeAnalysis.confidence} />
+            </motion.div>
+          )}
+        </GlassCard>
+      </div>
+
+      {/* Feature analysis */}
+      {result && (
+        <GlassCard className="mt-6 p-6">
+          <SectionHeading label="Forensics" title="Voice Feature Analysis" subtitle="Six acoustic biomarkers evaluated against known human baseline distributions." />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {deepfakeAnalysis.features.map((f, i) => (
+              <motion.div
+                key={f.name}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-200">{f.name}</p>
+                  {f.status === 'anomalous' ? (
+                    <AlertTriangle className="h-4 w-4 text-rose-400" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                  )}
+                </div>
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/5">
+                  <motion.div
+                    className={`h-full rounded-full ${f.status === 'anomalous' ? 'bg-gradient-to-r from-rose-500 to-red-500' : 'bg-gradient-to-r from-amber-400 to-orange-500'}`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${f.value * 100}%` }}
+                    transition={{ duration: 1 }}
+                  />
+                </div>
+                <p className="mt-2 font-mono text-xs text-slate-500">
+                  deviation {f.value.toFixed(2)} · {f.status}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+    </div>
+  );
+}
